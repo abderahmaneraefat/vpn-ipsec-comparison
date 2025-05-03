@@ -1,0 +1,55 @@
+services:
+  client:
+    build: ./client
+    container_name: vpn_client
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    networks:
+      - vpn_network
+    volumes:
+      - ./client/config:/etc/openvpn/client  # Pour OpenVPN
+      - ./client/ipsec-config:/etc/ipsec.d   # Pour IPSec
+      - ./results:/results
+      # Pour stocker les résultats
+    depends_on:
+      - openvpn_server
+      - ipsec_server
+
+  openvpn_server:
+    build: ./openvpn-server
+    container_name: openvpn_server
+    cap_add:
+      - NET_ADMIN
+    devices:
+       - /dev/net/tun
+    ports:
+      - "1195:1194/udp"  # Port externe modifié pour éviter les conflits
+    networks:
+      - vpn_network
+    volumes:
+      - ./openvpn-server/config:/etc/openvpn/server
+      - ./openvpn-server/scripts:/usr/local/bin
+  ipsec_server:
+    build: ./ipsec-server
+    container_name: ipsec_server
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "500:500/udp"
+      - "4500:4500/udp"
+    networks:
+      - vpn_network
+    volumes:
+      - ./ipsec-server/config:/etc
+      - ./ipsec-server/scripts:/usr/local/bin
+    environment:
+      - SERVER_IP=192.168.1.200  # À adapter selon votre réseau
+
+
+networks:
+  vpn_network:
+    driver: bridge
+
+
